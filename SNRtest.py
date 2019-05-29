@@ -262,34 +262,16 @@ def local_normalize(audio):
 
 
 if __name__ == '__main__':
-
+    # 合成数据实验
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True
     config.gpu_options.per_process_gpu_memory_fraction = 0.5
     with tf.Session(config=config) as sess:
         # 导入训练模型
-        # saver = tf.train.import_meta_graph('ckpt/cnn4click_shifted.ckpt-199.meta')
-        # saver.restore(sess, 'ckpt/cnn4click_shifted.ckpt-199')
-        # saver = tf.train.import_meta_graph('ckpt/cnn4click_manual_impulse_flat.ckpt-199.meta')
-        # saver.restore(sess, 'ckpt/cnn4click_manual_impulse_flat.ckpt-199')
-        # saver = tf.train.import_meta_graph('ckpt/cnn4click_mat_impulse_flat.ckpt-99.meta')
-        # saver.restore(sess, 'ckpt/cnn4click_mat_impulse_flat.ckpt-99')
-        # saver = tf.train.import_meta_graph('ckpt/cnn4click_mat_flat_impulse.ckpt-99.meta')
-        # saver.restore(sess, 'ckpt/cnn4click_mat_flat_impulse.ckpt-99')
-
-        # saver = tf.train.import_meta_graph('ckpt/allconv_cnn4click_small_clean_3conv_little_shift.ckpt-199.meta')
-        # saver.restore(sess, 'ckpt/allconv_cnn4click_small_clean_3conv_little_shift.ckpt-199')
-
-        ###
-        # saver = tf.train.import_meta_graph('ckpt/allconv_cnn4click_norm_quater_manual.ckpt-300.meta')
-        # saver.restore(sess, 'ckpt/allconv_cnn4click_norm_quater_manual.ckpt-300')
-        ###
 
         saver = tf.train.import_meta_graph('ckpt/allconv_cnn4click_norm_quater_manual_conv2_supplement.ckpt-300.meta')
         saver.restore(sess, 'ckpt/allconv_cnn4click_norm_quater_manual_conv2_supplement.ckpt-300')
 
-        # saver = tf.train.import_meta_graph('ckpt/allconv_cnn4click_norm_quater_manual_conv2_16kernal.ckpt-150.meta')
-        # saver.restore(sess, 'ckpt/allconv_cnn4click_norm_quater_manual_conv2_16kernal.ckpt-150')
 
         graph = tf.get_default_graph()
 

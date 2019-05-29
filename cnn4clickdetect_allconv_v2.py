@@ -3,6 +3,7 @@ import GetData
 import numpy as np
 import random
 import math
+
 import os
 import matplotlib.pylab as pl
 from scipy import signal
@@ -17,6 +18,9 @@ from tensorflow.python.training import moving_averages
 # UPDATE_OPS_COLLECTION = 'update_ops' # must be grouped with training op
 # CNN_VARIABLES = 'cnn_variables'
 
+# converge = np.load("converge_array.npy")
+# pl.plot(converge)
+# pl.show()
 
 def weight_variable(shape):
     initial = tf.truncated_normal(shape, stddev=0.1)
@@ -388,21 +392,21 @@ y = tf.placeholder(tf.float32, [None, 2], name='y')
 x_signal = input_reshape(x, is_batch)
 
 # 1——卷积层 卷积长度：1*8, 卷积核个数：16 32 40
-W_conv1 = weight_variable([1, 9, 1, 16])
-b_conv1 = bias_variable([16])
+W_conv1 = weight_variable([1, 9, 1, 32])
+b_conv1 = bias_variable([32])
 
 # TODO: 加入BN层
-h_conv1 = conv2d(x_signal, W_conv1, padding='VALID')+b_conv1 # 248*1*16
+h_conv1 = conv2d(x_signal, W_conv1)+b_conv1 # 248*1*16
 # h_bn1 = tf.nn.relu(batchnorm(h_conv1, is_testing, out_size=16, convolutional=True)) # batch normalization
 h_bn1 = tf.nn.relu(h_conv1)  # no batch normalization
 h_pool1 = maxpooling_2x1(h_bn1)  # 输出128*1*16 # 124*1*16
 
 # 2——卷积层 卷积长度：1*5， 卷积核个数：8
-W_conv2 = weight_variable([1, 5, 16, 8])
+W_conv2 = weight_variable([1, 5, 32, 8])
 b_conv2 = bias_variable([8])
 
 # TODO:加入BN层
-h_conv2 = conv2d(h_pool1, W_conv2, padding='VALID')+b_conv2 # 120*1*8
+h_conv2 = conv2d(h_pool1, W_conv2)+b_conv2 # 120*1*8
 # h_bn2 = tf.nn.relu(batchnorm(h_conv2, is_testing, out_size=8,  convolutional=True))  # batch normalization
 h_bn2 = tf.nn.relu(h_conv2)  # no batch normalization
 h_pool2 = maxpooling_2x1(h_bn2)  # 输出64*1*8 # 60*1*8
@@ -412,7 +416,7 @@ W_conv3 = weight_variable([1, 5, 8, 8])
 b_conv3 = bias_variable([8])
 #
 # TODO：加入BN层
-h_conv3 = conv2d(h_pool2, W_conv3, padding='VALID')+b_conv3 # 56*1*8
+h_conv3 = conv2d(h_pool2, W_conv3)+b_conv3 # 56*1*8
 # h_bn3 = tf.nn.relu(batchnorm(h_conv3, is_testing, out_size=8, convolutional=True))  # batch normalization
 h_bn3 = tf.nn.relu(h_conv3)  # no batch normalization
 h_pool3 = maxpooling_2x1(h_bn3) # 输出为32*1*8 # 28*1*8
@@ -420,7 +424,7 @@ h_pool3 = maxpooling_2x1(h_bn3) # 输出为32*1*8 # 28*1*8
 # 4——全连接层 神经元个数：512
 # W_fc4 = weight_variable([28*1*8, 512])
 # for 2 conv layer
-W_fc4 = weight_variable([60*1*8, 512])
+W_fc4 = weight_variable([32*1*8, 512])
 b_fc4 = bias_variable([512])
 # h_pool3_flat = tf.reshape(h_pool3, [-1, 32*1*8])
 # h_fc4 = tf.nn.relu(tf.matmul(h_pool3_flat, W_fc4)+b_fc4)
@@ -431,7 +435,7 @@ keep_pro_l4_l5 = tf.placeholder(tf.float32, name='keep_pro_l4_l5')
 def fc4(input_x, weight4, bias4, keep_pro):
     # x_flat = tf.reshape(input_x, [-1, 28 * 1 * 8])
     # for 2 conv layer
-    x_flat = tf.reshape(input_x, [-1, 60 * 1 * 8])
+    x_flat = tf.reshape(input_x, [-1, 32 * 1 * 8])
     h_fc4 = tf.nn.relu(tf.matmul(x_flat, weight4) + bias4)
     h_fc4_drop = tf.nn.dropout(h_fc4, keep_prob=keep_pro)
     return h_fc4_drop
@@ -440,13 +444,13 @@ def fc4(input_x, weight4, bias4, keep_pro):
 def conv4(input_x, weight4, bias4):
     # conv_weight4 = tf.reshape(weight4, [1, 28, 8, 512])
     # for 2 conv layer
-    conv_weight4 = tf.reshape(weight4, [1, 60, 8, 512])
-    h_conv4 = tf.nn.relu(conv2d(input_x, conv_weight4, padding="VALID") + bias4)
+    conv_weight4 = tf.reshape(weight4, [1, 32, 8, 512])
+    h_conv4 = tf.nn.relu(conv2d(input_x, conv_weight4) + bias4)
     return h_conv4
 
 # for conv2
-h_output4 = tf.cond(is_batch, lambda: fc4(h_pool2, W_fc4, b_fc4, keep_pro_l4_l5), lambda: conv4(h_pool2, W_fc4, b_fc4))
-# h_output4 = tf.cond(is_batch, lambda: fc4(h_pool3, W_fc4, b_fc4, keep_pro_l4_l5), lambda: conv4(h_pool3, W_fc4, b_fc4))
+# h_output4 = tf.cond(is_batch, lambda: fc4(h_pool2, W_fc4, b_fc4, keep_pro_l4_l5), lambda: conv4(h_pool2, W_fc4, b_fc4))
+h_output4 = tf.cond(is_batch, lambda: fc4(h_pool3, W_fc4, b_fc4, keep_pro_l4_l5), lambda: conv4(h_pool3, W_fc4, b_fc4))
 
 # 5——全连接层 神经元个数：512
 W_fc5 = weight_variable([512, 512])
@@ -462,7 +466,7 @@ def fc5(input_x, weight5, bias5):
 
 def conv5(input_x, weight5, bias5):
     conv_weight5 = tf.reshape(weight5, [1, 1, 512, 512])
-    h_conv5 = tf.nn.relu(conv2d(input_x, conv_weight5, padding="VALID") + bias5)
+    h_conv5 = tf.nn.relu(conv2d(input_x, conv_weight5) + bias5)
     return h_conv5
 
 
@@ -484,7 +488,7 @@ def fc6(input_x, weight6, bias6):
 
 def conv6(input_x, weight6, bias6):
     conv_weight6 = tf.reshape(weight6, [1, 1, 512, 2])
-    h_conv6 = tf.nn.relu(conv2d(input_x, conv_weight6, padding="VALID") + bias6)
+    h_conv6 = tf.nn.relu(conv2d(input_x, conv_weight6) + bias6)
     return h_conv6
 
 
@@ -510,23 +514,13 @@ saver = tf.train.Saver(max_to_keep=1)
 if __name__ == '__main__':
 
     print('loading data...')
-    # data = sio.loadmat('little_shift/smallset_quater_manual.mat')['data']
     data = sio.loadmat('little_shift/supplement_quater_manual.mat')['data']
 
     data = data[0:75000]
     data = energy_normlize(data)
     click_label = np.loadtxt('shuffle_data_label.txt')
     label = np.tile(click_label[0:7500], (10, 1))
-    # label = click_label[0:22000]
-    # bottlenose = np.loadtxt('./from_mat/bottlenose.txt')
-    # common = np.loadtxt('./from_mat/common.txt')
-    # spinner = np.loadtxt('./from_mat/spinner.txt')
-    # melon = np.loadtxt('./from_mat/melon.txt')
-    # data = np.vstack((bottlenose, common, spinner, melon))
-    # data = high_pass_filter(data, cutoff=20000, fs=192000)
-    # data = energy_normlize(data)
-    # np.savetxt('./from_mat/concatenate_data.txt', data)
-    # data = np.loadtxt('./from_mat/concatenate_data.txt')
+    print(label.shape)
     print('done')
 
     print('loading xiamen impulse...')
@@ -536,51 +530,7 @@ if __name__ == '__main__':
     # xiamen_impulse = xiamen_impulse[0:5000]
     print('done!')
 
-    # #######################带信噪比训练样本######################
-    # db_list = list(range(9, 17, 2))
-    # for i in db_list:
-    #     bottlenose_db = np.loadtxt('./from_mat/bottlenose_%ddB.txt' % i)
-    #     common_db = np.loadtxt('./from_mat/common_%ddB.txt' % i)
-    #     spinner_db = np.loadtxt('./from_mat/spinner_%ddB.txt' % i)
-    #     melon_db = np.loadtxt('./from_mat/melon_%ddB.txt' % i)
-    #     db_data = np.vstack((bottlenose_db[0:5000], common_db[0:5000], spinner_db[0:5000], melon_db[0:5000]))
-    #     db_data = high_pass_filter(db_data, cutoff=20000, fs=192000)
-    #     db_data = energy_normlize(db_data)
-    #     # pl.plot(db_data[0])
-    #     # pl.show()
-    #     data = np.vstack((data, db_data))
-    # ###############################################################
-
-    ######################## 载入难分类样本 ################
-    # print('load hard recog sample from pre-trained model test...')
-    # hard_neg_recog = np.loadtxt('./data_txt/hard_neg_recog.txt')
-    # hard_neg_label = np.loadtxt('./data_txt/hard_neg_label.txt')
-    # hard_pos_recog = np.loadtxt('./data_txt/hard_pos_recog.txt')
-    # hard_pos_label = np.loadtxt('./data_txt/hard_pos_label.txt')
-    # print('done')
-    #
-    # # data = np.vstack((data, hard_pos_recog))
-    # # label = np.vstack((label, hard_pos_label))
-    # manual_hard = np.loadtxt('./data_txt/hard_recog.txt')
-    # manual_hard_label = np.loadtxt('./data_txt/hard_label.txt')
-    #
-    # num_pos_sample = data.shape[0]
-    # delta_pos_neg = num_pos_sample - hard_neg_recog.shape[0] - manual_hard.shape[0]
-    # print('the number of hard recog positive sample %g' % hard_pos_recog.shape[0])
-    # print('the number of hard recog negetive sample %g' % hard_neg_recog.shape[0])
-    # print('the number of hard recog manual sample %g' % manual_hard.shape[0])
-    # data = np.vstack((data, hard_neg_recog, manual_hard))
-    # label = np.vstack((label, hard_neg_label, manual_hard_label))
-
-
-    ########################### 放大突刺样本 ############################
-    # num = int(data.shape[0] / 3)
-    # num = data.shape[0]
-    # num = 100
-    # num = int(delta_pos_neg/3)
-    # 生成或导入噪声样本
-    # manual_impulse, manual_impulse_label = generate_impulse(data_template_path='./fordebug', add_noise_path='./noise',
-    #                                                         num=num)
+    # 生成或导入背景噪声样本
     flat_num = 25000
     flat_noise, flat_noise_label = generate_flat_noise(flat_num)
     # flat_noise = flat_noise / 2 ** 16
@@ -597,6 +547,7 @@ if __name__ == '__main__':
     # pl.plot(flat_noise[0])
     # pl.show()
 
+    # 生成或导入冲击噪声样本
     impulse_num = 15000
     impluse_noise, impulse_noise_label = generate_impulse_noise(impulse_num)
     # impluse_noise = impluse_noise / 2**16
@@ -608,13 +559,8 @@ if __name__ == '__main__':
     # pl.plot(impluse_noise[0])
     # pl.show()
 
-    # data = np.vstack((data, flat_noise))
-    # label = np.vstack((label, flat_noise_label))
-
     data = np.vstack((data, flat_noise, flat_noise_from_mat, impluse_noise, xiamen_impulse))
     label = np.vstack((label, flat_noise_label, flat_noise_from_mat_label, impulse_noise_label, xiamen_impulse_label))
-    # data = np.vstack((data, flat_noise, impluse_noise, manual_impulse))
-    # label = np.vstack((label, flat_noise_label, impulse_noise_label, manual_impulse_label))
     ####################################################################
 
     (shuffled_data, shuffled_label) = GetData.ShuffleData(data, label)
@@ -654,6 +600,7 @@ if __name__ == '__main__':
         num_train = train_data.shape[0]
         batch_size = 128
         num_batch = int(num_train/batch_size)
+        converge_acc = []
         for i in range(301):
             acc = 0
             for index in range(num_batch):
@@ -668,12 +615,16 @@ if __name__ == '__main__':
             #     train_accuracy = accuracy.eval(feed_dict={x: train_data, y: train_label,
             #                                               keep_pro_l4_l5: 1.0, is_testing: True})
             acc = acc/num_batch
+            converge_acc.append(1-acc)
             print('epoch %d, average training accuracy %g' % (i, acc))
-            # saver.save(sess, 'ckpt/allconv_cnn4click_small_clean_3conv_little_shift_v2.ckpt', global_step=i)
             saver.save(sess, 'ckpt/allconv_cnn4click_norm_quater_manual_conv2_supplement.ckpt', global_step=i)
             (train_data, train_label) = GetData.ShuffleData(train_data, train_label)
         print('training over.')
 
+        converge_array = np.array(converge_acc)
+        np.save('converge_array.npy', converge_array)
+        pl.plot(converge_array)
+        pl.show()
         # # 获取第一个卷积层权重
         # weight_conv1 = W_conv1.eval()
         # reshaped_weight = weight_conv1.reshape((9, 16))
@@ -695,25 +646,7 @@ if __name__ == '__main__':
                                                           keep_pro_l4_l5: 1.0, is_batch: True})
             print('train batch: %g accuracy: %g' % (index, train_accuracy))
 
-        ############### 单样本测试 ####################
-        # correct = 0
-        # for i in range(num_train):
-        #     # iscorrect = correct_prediction.eval(feed_dict={x: train_data[i].reshape(1, 256),
-        #     #                                                y: train_label[i].reshape(1, 2),
-        #     #                                                keep_pro_l4_l5: 1.0, is_testing: True})
-        #     # if iscorrect:
-        #     #     correct = correct+1
-        #     y_out = sess.run(y_net_out, feed_dict={x: train_data[i].reshape(1, 256), keep_pro_l4_l5: 1.0, is_testing: True})
-        #     predict = np.argmax(y_out, axis=1)
-        #     if predict == np.argmax(train_label[i].reshape(1, 2), axis=1):
-        #         correct = correct + 1
-        # acc = correct / num_train
-        # print('one by one test: %g' % acc)
-        ################################################
-
         print('test:')
-        # print('test accuracy %g' % accuracy.eval(
-        #     feed_dict={x: test_data, y: test_label, keep_pro_l4_l5: 1.0, is_testing: True}))
         num_test = test_data.shape[0]
         batch_size = 128
         num_batch = int(num_test / batch_size)
@@ -728,23 +661,3 @@ if __name__ == '__main__':
                                                           keep_pro_l4_l5: 1.0, is_batch: True})
             print('test batch: %g accuracy: %g' % (index, train_accuracy))
         end = 0
-
-
-
-
-        # print('impulse test %g' % accuracy.eval(
-        #     feed_dict={x: impulse_noise1[num:num*2], y: noise_actual_label, keep_pro_l4_l5: 1.0, is_testing: True}))
-        # whole_data = np.vstack((x1_left, x2_left, x3_left, x4_left,
-        #                         x1_center, x2_center, x3_center, x4_center,
-        #                         x1_right, x2_right, x3_right, x4_right))
-        # num_test = int(len(whole_data)/28000)
-        # sum_acc = 0
-        # for j in range(num_test):
-        #     batch_start = j*28000
-        #     batch_end = (j + 1) * 28000
-        #     test_batch = whole_data[batch_start:batch_end]
-        #     test_batch_accuracy = accuracy.eval(
-        #         feed_dict={x: test_batch, y: click_label[0:28000], keep_pro_l4_l5: 1.0, is_testing: True})
-        #     print('test batch accuracy %g' % test_batch_accuracy)
-        #     sum_acc = sum_acc + test_batch_accuracy
-        # print('average accuracy %g' % (sum_acc/num_test))
